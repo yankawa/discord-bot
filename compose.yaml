@@ -47,7 +47,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-# Preserve existing named volumes across the bot/service renaming.
 volumes:
   owner-data:
   links-data:

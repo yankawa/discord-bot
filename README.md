@@ -1,17 +1,17 @@
-# Discord Bot — Go版
+# Discord Bots
 
-独立した2つのDiscord Botです。それぞれ別のアプリケーション・Botトークン・プロセスで動かします。`times-bot` はチャンネル作成者の権限管理、`utils-bot` はリンク補正などのユーティリティを担当します。Discord上のBot表示名はDeveloper Portalでそれぞれ **Times Bot** / **Utils Bot** に設定してください（実行ファイル名の変更だけではDiscord上の表示名は変わりません）。
+チャンネル権限管理とリンク補正を提供するDiscord Botです。`times-bot` と `utils-bot` は、それぞれ独立したDiscordアプリケーション、トークン、プロセスで動作します。
 
 | 実行ファイル | 役割 |
 | --- | --- |
 | `times-bot` | 指定カテゴリーで通常のDiscord操作により作成されたチャンネルを、作成者が管理できる状態に変更 |
 | `utils-bot` | X / Twitterの投稿URLに、FxTwitterの埋め込み用URLを返信 |
 
-実装はGo、Discord SDKは `disgo v0.20.0` です。LLM、画像モデル、Node.js、Python、外部DBは実行時に使いません。各Botの状態は個別のJSONファイルへ保存します。1プロセスにつき1サーバーを対象にします。
+Goと `disgo` を使用します。Botごとに状態をJSONファイルへ保存し、各プロセスは1つのDiscordサーバーを管理します。
 
-## 1. 先に知っておくチャンネル権限の制約
+## 1. チャンネル権限の制約
 
-**カテゴリーの `@everyone` に「チャンネルの管理」を許可すると、カテゴリー自体の編集・削除も許可されます。「チャンネルの新規作成だけ」というDiscord権限はありません。** このBotの処理は作成後の修正なので、その制約や作成直後の短い競合時間をなくすことはできません。Bot停止中は新しいチャンネルを即座に保護できません。
+**カテゴリーの `@everyone` に「チャンネルの管理」を許可すると、カテゴリー自体の編集・削除も許可されます。** Discordには「チャンネルの作成だけ」を許可する専用権限がありません。`times-bot` は作成後に権限を更新するため、権限の切り替えまでに時間差が生じます。停止中の新規チャンネルは、Botの再起動後に再照合されます。
 
 また、次の点はDiscordの権限モデルによる制約です。
 
@@ -20,7 +20,7 @@
 - カテゴリーを削除すると、子チャンネルはカテゴリーから外れます。Botはカテゴリーを自動再作成しません。
 - Botが閲覧できない非公開チャンネルは修正できません。新規チャンネルでもBotの閲覧・管理権限を保持してください。Discordが不可視チャンネルの伏せられた情報を返した場合は、権限を上書きせずエラーにします。
 
-一般メンバーにカテゴリーの編集・削除を許したくない場合は、スラッシュコマンドや作成ボタン経由に変更する必要があります。この実装は依頼どおり、Discord標準のチャンネル作成操作を使う構成です。
+カテゴリーの編集・削除を一般メンバーに許可しない運用では、標準のチャンネル作成操作に代わる専用の作成フローが必要です。
 
 ## 2. Discord側の準備
 
@@ -40,9 +40,9 @@ Botに必要な権限は次のとおりです。
 | 各対象カテゴリー | 権限の管理 / Manage Permissions（API名はManage Roles） |
 | 各対象カテゴリー | 接続 / Connect |
 
-対象カテゴリーにこのBot本人の権限上書きを作り、上記4つを明示的に許可すると運用が分かりやすくなります。Connectは、同じカテゴリー内のボイス・ステージチャンネルの作成者に接続権限を付与するためにも必要です。
+対象カテゴリーでは、Bot自身に必要な権限を明示的に許可してください。Connectは、同じカテゴリー内のボイス・ステージチャンネルの作成者に接続権限を付与するためにも必要です。
 
-このBotにMessage Content IntentやServer Members Intentは不要です。コードはGuildsとGuildModerationのGateway Intentを使用します。
+この使用するGateway IntentはGuildsとGuildModerationです。Message Content IntentとServer Members Intentは不要です。
 
 **準備の順序：**
 
@@ -52,7 +52,7 @@ Botに必要な権限は次のとおりです。
 4. 対象カテゴリーの `@everyone` に「チャンネルの管理」を許可します。一般メンバーの「権限の管理」は許可する必要がありません。
 5. 一般メンバーのアカウントで、カテゴリーを右クリック →「チャンネルを作成」を試します。
 
-カテゴリーでの作成許可がまだ無い状態でもBotは起動できます。その場合は設定を促す警告を出します。
+カテゴリーで作成権限が許可されていない場合も起動できますが、警告を記録します。
 
 ### utils-bot
 
@@ -90,7 +90,7 @@ chmod 600 .env.times .env.utils
 `.env.times` の例：
 
 ```dotenv
-DISCORD_TOKEN=自分のチャンネル管理Botトークン
+DISCORD_TOKEN=replace_with_times_bot_token
 GUILD_ID=123456789012345678
 CATEGORY_IDS=234567890123456789,345678901234567890
 STATE_FILE=./data/owner.json
@@ -103,7 +103,7 @@ QUEUE_CAPACITY=1024
 `.env.utils` の例：
 
 ```dotenv
-DISCORD_TOKEN=自分のリンク補正Botトークン
+DISCORD_TOKEN=replace_with_utils_bot_token
 GUILD_ID=123456789012345678
 CHANNEL_IDS=
 MAX_LINKS=5
@@ -152,27 +152,13 @@ docker compose up -d --build times-bot
 docker compose up -d --build utils-bot
 ```
 
-状態はBotごとのnamed volumeに保存します。既存データの消失を避けるため、旧版のvolume名 `owner-data` / `links-data` と状態ファイル名 `/app/data/owner.json` / `/app/data/links.json` は維持しています。停止・再作成後も同じvolumeを使ってください。`docker compose down -v` は状態も削除します。
+状態は `owner-data` / `links-data` のnamed volumeに保存します。保存先は `/app/data/owner.json` / `/app/data/links.json` です。更新時も同じvolumeを使用してください。`docker compose down -v` は保存状態を削除します。
 
 コンテナは非rootで動作し、ホストへの待受ポートはありません。DiscordへのHTTPS/WebSocket接続とDNSが必要です。
 
-### 旧バージョンからの名称変更時
+### B. ソースからビルドして実行
 
-旧名で起動済みの環境では、新しい設定ファイルを用意して旧サービスを停止します。**状態ファイルとDocker volumeは削除しないでください。**
-
-```bash
-cp .env.owner .env.times
-cp .env.links .env.utils
-chmod 600 .env.times .env.utils
-docker compose down --remove-orphans
-docker compose up -d --build
-```
-
-旧版をsystemdで運用していた場合は、先に `sudo systemctl disable --now discord-bot@channel-owner discord-bot@fx-links` を実行してから、後述の新しいunitを有効にしてください。上の例は既存の `.env.owner` / `.env.links` を使っていた場合の移行用です。新規導入時は前述の `.example` から作成します。
-
-### B. Goでビルドして実行
-
-Go 1.24以降でビルドできます。CIとローカル検証ではGo 1.27.4を使っています。実行ファイルはGitに含めず、ソースから生成します。
+Go 1.24以降を使用します。CIではGo 1.27.4を使用し、実行ファイルを生成します。
 
 ```bash
 make build
@@ -276,7 +262,7 @@ https://fxtwitter.com/example/status/1234567890123456789
 
 追跡は既定7日、最大1万件です。期限が来ると追跡情報だけを削除し、Discord上の既存返信は残します。その後は元投稿の編集・削除に追従しません。
 
-このBotは補正URLを返し、プレビュー自体はDiscordと公開FxEmbedサービスが生成します。FxEmbedを自前で運用する構成ではありません。Xの投稿取得制約やサービス停止により、URLは返信できてもプレビューが表示されない場合があります。内容の安全性・センシティブ判定は今回の実装に含まれません。
+`utils-bot` が返すのは補正URLです。プレビューはDiscordとFxEmbedサービスが生成するため、外部サービスの状態によっては表示されない場合があります。投稿内容の安全性やセンシティブ判定は行いません。
 
 ## 7. 状態保存・運用
 
@@ -289,8 +275,6 @@ https://fxtwitter.com/example/status/1234567890123456789
 - キュー満杯はログへ出します。チャンネル管理は定期スキャンで再取得します。リンクの新規投稿がキューへ入る前にあふれた場合、その未追跡投稿は履歴から自動再取得しません。
 - SIGINT / SIGTERMで処理を止め、状態ファイルのロックを解放します。ログはJSON形式で標準出力へ出し、設定したBotトークンを伏せます。
 
-既存Node版 `discord-channel-owner-bot` のv1状態ファイルを利用する場合は、Nodeプロセスを停止し、ファイルをバックアップしてからGo版の `STATE_FILE` に指定できます。Guildが一致する必要があります。元の初回起動時刻と所有者情報を引き継ぎます。
-
 ## 8. テストと確認範囲
 
 ```bash
@@ -301,7 +285,7 @@ go vet ./...
 
 権限の競合、監査ログの誤対応防止、保存失敗、再起動時の復旧、URLの誤認・展開除外、並行イベント、Discord RESTの送信内容をテストしています。RESTアダプターのテストはHTTPをモック化し、SDKが実際に作るリクエストを検証します。
 
-実装時の検証結果は `VERIFICATION.md` を参照してください。Botトークンを使う実Discord接続試験と、Docker / systemdの実稼働試験は行っていません。実際のサーバーで最初に1チャンネル・1投稿を使い、権限と返信を確認してください。
+本番環境での動作は、テスト用カテゴリーでのチャンネル作成と権限確認、リンク投稿の作成・編集・削除を通じて検証してください。CIのテストではDiscord REST APIをモック化しています。
 
 依存ライブラリのライセンスは `licenses/` に収録しています。
 
@@ -319,7 +303,7 @@ go vet ./...
 既定は `ubuntu-24.04` です。セルフホストrunnerを使う場合は、リポジトリのActions変数 `CI_RUNNER_LABELS` に、例えば次のJSON配列を設定します。
 
 ```json
-["self-hosted", "Linux", "X64", "k8s"]
+["self-hosted", "Linux", "X64"]
 ```
 
 Linux x86-64のrunnerに、更新済みのGitHub Actions runner、Git、Bash、Make、Cコンパイラ（race検査用）、tarを用意してください。Goはsetup-goでインストールします。外部からのPull Requestをセルフホストrunnerで実行する場合は、信頼できるコードだけを実行する運用にしてください。
