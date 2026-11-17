@@ -1,0 +1,28 @@
+services:
+  utils-bot:
+    build:
+      context: .
+      args:
+        BOT: utils-bot
+    env_file:
+      - .env.utils
+    environment:
+      STATE_FILE: /app/data/links.json
+    volumes:
+      - links-data:/app/data
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  links-data:

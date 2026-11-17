@@ -1,5 +1,7 @@
 # Discord Bots
 
+[日本語](README.md) | [English](README.en.md)
+
 チャンネル権限管理とリンク補正を提供するDiscord Botです。`times-bot` と `utils-bot` は、それぞれ独立したDiscordアプリケーション、トークン、プロセスで動作します。
 
 | 実行ファイル | 役割 |
@@ -85,7 +87,7 @@ cp .env.utils.example .env.utils
 chmod 600 .env.times .env.utils
 ```
 
-それぞれのファイルの `DISCORD_TOKEN`、`GUILD_ID` を置き換えます。`.env.times` には `CATEGORY_IDS` も設定します。2つのファイルには別々のBotトークンを使ってください。
+それぞれのファイルの `DISCORD_TOKEN`、`GUILD_ID` を置き換えます。`.env.times` には `CATEGORY_IDS` も設定します。両Botを運用する場合は別々のBotトークンを使ってください。単独導入なら対象Botの設定ファイルのみ必要です。
 
 `.env.times` の例：
 
@@ -133,7 +135,27 @@ QUEUE_CAPACITY=1024
 
 ## 4. 起動
 
-### A. Docker Compose
+### A. Docker Compose（単独導入）
+
+**Times Botのみ：** 
+
+```bash
+cp .env.times.example .env.times
+# .env.times にDISCORD_TOKEN、GUILD_ID、CATEGORY_IDSを設定
+docker compose -f compose.times.yaml up -d --build
+```
+
+**Utils Botのみ：** 
+
+```bash
+cp .env.utils.example .env.utils
+# .env.utils にDISCORD_TOKEN、GUILD_IDを設定
+docker compose -f compose.utils.yaml up -d --build
+```
+
+単独導入では対象外Botの設定ファイルやトークンは不要です。各Composeファイルには、そのBotのサービスと状態ボリュームのみを定義しています。
+
+### B. Docker Compose（両Bot）
 
 Docker EngineとComposeプラグインを使える環境で、設定ファイル作成後に実行します。
 
@@ -152,16 +174,18 @@ docker compose up -d --build times-bot
 docker compose up -d --build utils-bot
 ```
 
-状態は `owner-data` / `links-data` のnamed volumeに保存します。保存先は `/app/data/owner.json` / `/app/data/links.json` です。更新時も同じvolumeを使用してください。`docker compose down -v` は保存状態を削除します。
+状態は `owner-data` / `links-data` のnamed volumeに保存します。単独導入と両BotのComposeは同じサービス名とvolumeキーを使います。保存先は `/app/data/owner.json` / `/app/data/links.json` です。更新時も同じvolumeを使用してください。`docker compose down -v` は保存状態を削除します。
 
 コンテナは非rootで動作し、ホストへの待受ポートはありません。DiscordへのHTTPS/WebSocket接続とDNSが必要です。
 
-### B. ソースからビルドして実行
+### C. ソースからビルドして実行
 
-Go 1.24以降を使用します。CIではGo 1.27.4を使用し、実行ファイルを生成します。
+Go 1.26以降を使用します。CIではGo 1.27.4を使用し、実行ファイルを生成します。
 
 ```bash
-make build
+make build          # 両Bot
+make build-times    # Times Botのみ
+make build-utils    # Utils Botのみ
 ```
 
 ビルド後の実行環境にはGoランタイムの追加インストールは不要です。OSのCA証明書は必要です。
@@ -298,7 +322,9 @@ go vet ./...
 - `go test -race ./...`
 - 両Botのビルド
 
-成功したrunのArtifactsから、Linux amd64向けの実行ファイルとチェックサムを含むアーカイブを取得できます。Artifactの保持期間は7日です。トークンを使うDiscord接続や本番へのデプロイは行いません。
+成功したrunのArtifactsには、Times Bot単体・Utils Bot単体・両BotまとめてのLinux amd64向けアーカイブを用意しています。各アーカイブには実行ファイル、チェックサム、ライセンスを収録します。Artifactの保持期間は7日です。
+
+`v` で始まるタグをpushするとReleaseワークフローが起動し、両Botそれぞれの配布アーカイブとSHA-256一覧をGitHub Releasesへ登録します。トークンを使うDiscord接続や本番へのデプロイは行いません。
 
 既定は `ubuntu-24.04` です。セルフホストrunnerを使う場合は、リポジトリのActions変数 `CI_RUNNER_LABELS` に、例えば次のJSON配列を設定します。
 
@@ -308,7 +334,15 @@ go vet ./...
 
 Linux x86-64のrunnerに、更新済みのGitHub Actions runner、Git、Bash、Make、Cコンパイラ（race検査用）、tarを用意してください。Goはsetup-goでインストールします。外部からのPull Requestをセルフホストrunnerで実行する場合は、信頼できるコードだけを実行する運用にしてください。
 
-## 10. 主な公式資料
+## 10. ライセンス・コントリビューション
+
+本プロジェクトのソースコードは [MIT License](LICENSE) に従って配布します。第三者依存関係のライセンスは [licenses/](licenses/README.md) に保存しています。
+
+公開リポジトリへの貢献方法は [CONTRIBUTING.md](CONTRIBUTING.md)、脆弱性の報告手順は [SECURITY.md](SECURITY.md)、参加者の行動規範は [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) を参照してください。
+
+DependabotはGoモジュール、GitHub Actions、Dockerの依存更新を毎週確認します。CIはテスト・静的解析・ビルドを実行します。Goの脆弱性はGovulncheckで定期検査します。
+
+## 11. 主な公式資料
 
 - [Discord permissions](https://docs.discord.com/developers/topics/permissions)
 - [Discord channel API](https://docs.discord.com/developers/resources/channel)

@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest an improvement
+title: "feat: "
+body:
+  - type: dropdown
+    id: bot
+    attributes:
+      label: Component
+      options:
+        - times-bot
+        - utils-bot
+        - shared infrastructure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Explain the use case without sharing private server data.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

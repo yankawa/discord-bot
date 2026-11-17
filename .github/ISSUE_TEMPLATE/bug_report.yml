@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible issue with a bot
+title: "bug: "
+body:
+  - type: dropdown
+    id: bot
+    attributes:
+      label: Component
+      options:
+        - times-bot
+        - utils-bot
+        - shared infrastructure
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the problem and expected result.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: Commit SHA or release version
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs (redacted)
+      description: Remove tokens, server identifiers, private messages, and other secrets.
+      render: shell
