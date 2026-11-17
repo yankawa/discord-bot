@@ -1,0 +1,52 @@
+services:
+  channel-owner:
+    build:
+      context: .
+      args:
+        BOT: channel-owner
+    env_file: .env.owner
+    environment:
+      STATE_FILE: /app/data/owner.json
+    volumes:
+      - owner-data:/app/data
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  fx-links:
+    build:
+      context: .
+      args:
+        BOT: fx-links
+    env_file: .env.links
+    environment:
+      STATE_FILE: /app/data/links.json
+    volumes:
+      - links-data:/app/data
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    stop_grace_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  owner-data:
+  links-data:
