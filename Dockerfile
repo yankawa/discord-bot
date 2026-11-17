@@ -4,7 +4,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-ARG BOT=channel-owner
+ARG BOT=times-bot
 ARG VERSION=0.1.0
 RUN CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/bot "./cmd/${BOT}"
 RUN mkdir -p /out/data

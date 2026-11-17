@@ -1,10 +1,10 @@
 services:
-  channel-owner:
+  times-bot:
     build:
       context: .
       args:
-        BOT: channel-owner
-    env_file: .env.owner
+        BOT: times-bot
+    env_file: .env.times
     environment:
       STATE_FILE: /app/data/owner.json
     volumes:
@@ -23,12 +23,12 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  fx-links:
+  utils-bot:
     build:
       context: .
       args:
-        BOT: fx-links
-    env_file: .env.links
+        BOT: utils-bot
+    env_file: .env.utils
     environment:
       STATE_FILE: /app/data/links.json
     volumes:
@@ -47,6 +47,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
+# Preserve existing named volumes across the bot/service renaming.
 volumes:
   owner-data:
   links-data:

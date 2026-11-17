@@ -23,26 +23,26 @@ func run() int {
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 	if *showVersion {
-		fmt.Println("channel-owner", version)
+		fmt.Println("utils-bot", version)
 		return 0
 	}
 	if err := config.LoadEnvFile(*env); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	cfg, err := config.ReadOwner()
+	cfg, err := config.ReadLinks()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	logger := logging.New(os.Stdout, cfg.Token).With("bot", "channel-owner")
+	logger := logging.New(os.Stdout, cfg.Token).With("bot", "utils-bot")
 	if *check {
-		logger.Info("configuration_valid", "guild_id", cfg.GuildID, "category_ids", cfg.CategoryIDs)
+		logger.Info("configuration_valid", "guild_id", cfg.GuildID, "channel_ids", cfg.ChannelIDs)
 		return 0
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := app.RunOwner(ctx, cfg, logger); err != nil {
+	if err := app.RunLinks(ctx, cfg, logger); err != nil {
 		if ctx.Err() != nil {
 			logger.Info("stopped")
 			return 0

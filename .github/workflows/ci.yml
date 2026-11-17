@@ -71,11 +71,11 @@ jobs:
       - name: Package binaries
         run: |
           mkdir -p dist/package
-          cp bin/channel-owner bin/fx-links dist/package/
+          cp bin/times-bot bin/utils-bot dist/package/
           cp -R licenses dist/package/licenses
           (
             cd dist/package
-            sha256sum channel-owner fx-links > CHECKSUMS.sha256
+            sha256sum times-bot utils-bot > CHECKSUMS.sha256
           )
           tar -czf dist/discord-bots-linux-amd64.tar.gz -C dist/package .
 

@@ -1,11 +1,11 @@
 # Discord Bot — Go版
 
-独立した2つのDiscord Botです。それぞれ別のアプリケーション・Botトークン・プロセスで動かします。
+独立した2つのDiscord Botです。それぞれ別のアプリケーション・Botトークン・プロセスで動かします。`times-bot` はチャンネル作成者の権限管理、`utils-bot` はリンク補正などのユーティリティを担当します。Discord上のBot表示名はDeveloper Portalでそれぞれ **Times Bot** / **Utils Bot** に設定してください（実行ファイル名の変更だけではDiscord上の表示名は変わりません）。
 
 | 実行ファイル | 役割 |
 | --- | --- |
-| `channel-owner` | 指定カテゴリーで通常のDiscord操作により作成されたチャンネルを、作成者が管理できる状態に変更 |
-| `fx-links` | X / Twitterの投稿URLに、FxTwitterの埋め込み用URLを返信 |
+| `times-bot` | 指定カテゴリーで通常のDiscord操作により作成されたチャンネルを、作成者が管理できる状態に変更 |
+| `utils-bot` | X / Twitterの投稿URLに、FxTwitterの埋め込み用URLを返信 |
 
 実装はGo、Discord SDKは `disgo v0.20.0` です。LLM、画像モデル、Node.js、Python、外部DBは実行時に使いません。各Botの状態は個別のJSONファイルへ保存します。1プロセスにつき1サーバーを対象にします。
 
@@ -28,7 +28,7 @@
 
 Discordの「ユーザー設定 → 詳細設定 → 開発者モード」を有効にすると、サーバー・カテゴリー・チャンネルのIDをコピーできます。
 
-### channel-owner
+### times-bot
 
 Botに必要な権限は次のとおりです。
 
@@ -54,7 +54,7 @@ Botに必要な権限は次のとおりです。
 
 カテゴリーでの作成許可がまだ無い状態でもBotは起動できます。その場合は設定を促す警告を出します。
 
-### fx-links
+### utils-bot
 
 BotのDeveloper Portalで **Message Content IntentをON** にしてください。通常のメッセージ本文からURLを読み取るために使います。コードではGuilds、GuildMessages、MessageContentを指定しています。
 
@@ -80,14 +80,14 @@ cd discord-bot
 Botごとの設定ファイルを作ります。
 
 ```bash
-cp .env.owner.example .env.owner
-cp .env.links.example .env.links
-chmod 600 .env.owner .env.links
+cp .env.times.example .env.times
+cp .env.utils.example .env.utils
+chmod 600 .env.times .env.utils
 ```
 
-それぞれのファイルの `DISCORD_TOKEN`、`GUILD_ID` を置き換えます。`.env.owner` には `CATEGORY_IDS` も設定します。2つのファイルには別々のBotトークンを使ってください。
+それぞれのファイルの `DISCORD_TOKEN`、`GUILD_ID` を置き換えます。`.env.times` には `CATEGORY_IDS` も設定します。2つのファイルには別々のBotトークンを使ってください。
 
-`.env.owner` の例：
+`.env.times` の例：
 
 ```dotenv
 DISCORD_TOKEN=自分のチャンネル管理Botトークン
@@ -100,7 +100,7 @@ WORKERS=4
 QUEUE_CAPACITY=1024
 ```
 
-`.env.links` の例：
+`.env.utils` の例：
 
 ```dotenv
 DISCORD_TOKEN=自分のリンク補正Botトークン
@@ -119,10 +119,10 @@ QUEUE_CAPACITY=1024
 | --- | --- |
 | `DISCORD_TOKEN` | そのBotのトークン。必須 |
 | `GUILD_ID` | 対象サーバーのID。必須 |
-| `CATEGORY_IDS` | channel-owner用。対象カテゴリーIDをカンマ区切り。必須 |
-| `CHANNEL_IDS` | fx-links用。空なら対象サーバーのアクセス可能なチャンネル。指定時は完全一致のチャンネル・スレッドID。カテゴリーや親チャンネルを指定しても子に展開されません |
+| `CATEGORY_IDS` | times-bot用。対象カテゴリーIDをカンマ区切り。必須 |
+| `CHANNEL_IDS` | utils-bot用。空なら対象サーバーのアクセス可能なチャンネル。指定時は完全一致のチャンネル・スレッドID。カテゴリーや親チャンネルを指定しても子に展開されません |
 | `STATE_FILE` | 永続状態の保存先。2つのBotで共有しないでください |
-| `RECONCILE_INTERVAL_SECONDS` | 再照合の周期。channel-owner既定60秒、fx-links既定300秒。範囲15〜86400秒 |
+| `RECONCILE_INTERVAL_SECONDS` | 再照合の周期。times-bot既定60秒、utils-bot既定300秒。範囲15〜86400秒 |
 | `REQUEST_TIMEOUT_SECONDS` | RESTリクエストごとの期限。既定30秒、範囲5〜300秒 |
 | `WORKERS` | Bot内の並行処理数。イベント処理と定期再照合で共有。既定4、範囲1〜16 |
 | `QUEUE_CAPACITY` | 未処理・処理中のイベントキー数上限。既定1024、範囲16〜10000 |
@@ -145,16 +145,30 @@ docker compose logs -f
 どちらか一方だけ起動する場合：
 
 ```bash
-docker compose up -d --build channel-owner
+docker compose up -d --build times-bot
 ```
 
 ```bash
-docker compose up -d --build fx-links
+docker compose up -d --build utils-bot
 ```
 
-状態はBotごとのnamed volumeに保存します。Composeは `STATE_FILE` を `/app/data/owner.json` と `/app/data/links.json` に固定します。停止・再作成後も同じvolumeを使ってください。`docker compose down -v` は状態も削除します。
+状態はBotごとのnamed volumeに保存します。既存データの消失を避けるため、旧版のvolume名 `owner-data` / `links-data` と状態ファイル名 `/app/data/owner.json` / `/app/data/links.json` は維持しています。停止・再作成後も同じvolumeを使ってください。`docker compose down -v` は状態も削除します。
 
 コンテナは非rootで動作し、ホストへの待受ポートはありません。DiscordへのHTTPS/WebSocket接続とDNSが必要です。
+
+### 旧バージョンからの名称変更時
+
+旧名で起動済みの環境では、新しい設定ファイルを用意して旧サービスを停止します。**状態ファイルとDocker volumeは削除しないでください。**
+
+```bash
+cp .env.owner .env.times
+cp .env.links .env.utils
+chmod 600 .env.times .env.utils
+docker compose down --remove-orphans
+docker compose up -d --build
+```
+
+旧版をsystemdで運用していた場合は、先に `sudo systemctl disable --now discord-bot@channel-owner discord-bot@fx-links` を実行してから、後述の新しいunitを有効にしてください。上の例は既存の `.env.owner` / `.env.links` を使っていた場合の移行用です。新規導入時は前述の `.example` から作成します。
 
 ### B. Goでビルドして実行
 
@@ -167,8 +181,8 @@ make build
 ビルド後の実行環境にはGoランタイムの追加インストールは不要です。OSのCA証明書は必要です。
 
 ```bash
-./bin/channel-owner -env .env.owner -check-config
-./bin/fx-links -env .env.links -check-config
+./bin/times-bot -env .env.times -check-config
+./bin/utils-bot -env .env.utils -check-config
 ```
 
 `-check-config` はローカル設定の形式だけを検査します。トークンの有効性やDiscord上の権限は、実際の起動時に検査します。
@@ -176,40 +190,40 @@ make build
 別々のターミナル、またはプロセス管理サービスから起動します。
 
 ```bash
-./bin/channel-owner -env .env.owner
+./bin/times-bot -env .env.times
 ```
 
 ```bash
-./bin/fx-links -env .env.links
+./bin/utils-bot -env .env.utils
 ```
 
 Makeを使わない場合：
 
 ```bash
-go build -buildvcs=false -trimpath -o bin/channel-owner ./cmd/channel-owner
-go build -buildvcs=false -trimpath -o bin/fx-links ./cmd/fx-links
+go build -buildvcs=false -trimpath -o bin/times-bot ./cmd/times-bot
+go build -buildvcs=false -trimpath -o bin/utils-bot ./cmd/utils-bot
 ```
 
 Linux ARM64向けの例：
 
 ```bash
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -buildvcs=false -o bin/channel-owner-arm64 ./cmd/channel-owner
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -buildvcs=false -o bin/fx-links-arm64 ./cmd/fx-links
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -buildvcs=false -o bin/times-bot-arm64 ./cmd/times-bot
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -buildvcs=false -o bin/utils-bot-arm64 ./cmd/utils-bot
 ```
 
 ### systemdでの常駐
 
 `deploy/discord-bot@.service` を同梱しています。専用ユーザー `discordbots` を用意し、バイナリを `/opt/discord-bots/bin/`、書き込み可能な状態ディレクトリを `/opt/discord-bots/data/` に配置してください。
 
-環境ファイルは `/etc/discord-bots/channel-owner.env` と `/etc/discord-bots/fx-links.env` に保存します。環境ファイルはroot所有・0600とし、状態ファイルはそれぞれ `/opt/discord-bots/data/owner.json` と `/opt/discord-bots/data/links.json` を指定します。unitを `/etc/systemd/system/discord-bot@.service` に配置後：
+環境ファイルは `/etc/discord-bots/times-bot.env` と `/etc/discord-bots/utils-bot.env` に保存します。環境ファイルはroot所有・0600とし、状態ファイルはそれぞれ `/opt/discord-bots/data/owner.json` と `/opt/discord-bots/data/links.json` を指定します。unitを `/etc/systemd/system/discord-bot@.service` に配置後：
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable --now discord-bot@channel-owner discord-bot@fx-links
-sudo journalctl -u discord-bot@channel-owner -u discord-bot@fx-links -f
+sudo systemctl enable --now discord-bot@times-bot discord-bot@utils-bot
+sudo journalctl -u discord-bot@times-bot -u discord-bot@utils-bot -f
 ```
 
-## 5. channel-ownerの動作
+## 5. times-botの動作
 
 1. 指定カテゴリー内の新しい通常チャンネルを検知します。
 2. 作成者が未判明なら、先にBot以外のチャンネル管理・権限管理を拒否します。
@@ -220,7 +234,7 @@ sudo journalctl -u discord-bot@channel-owner -u discord-bot@fx-links -f
 | --- | --- | --- | --- |
 | `@everyone` と他のロール・メンバー上書き | 拒否 | 拒否 | 既存の無関係な権限を保持 |
 | 作成者 | 許可 | 拒否 | View Channelを許可。音声系ではConnectも許可 |
-| channel-owner Bot | 許可 | 許可 | View Channelを許可。音声系ではConnectも許可 |
+| times-bot Bot | 許可 | 許可 | View Channelを許可。音声系ではConnectも許可 |
 
 作成者はチャンネル名の変更や削除などを行えます。権限の再委譲・公開範囲の変更はできません。管理者による例外は前述のとおりです。
 
@@ -234,7 +248,7 @@ sudo journalctl -u discord-bot@channel-owner -u discord-bot@fx-links -f
 
 初回起動時刻は状態ファイルに保持します。それより古い未追跡チャンネルは自動採用しません。初回起動後にBot停止中に作られたチャンネルは、再起動時の再照合で対象になります。監査ログの保持期間や検索上限により、長期停止後に作成者を解決できない場合があります。
 
-## 6. fx-linksの動作
+## 6. utils-botの動作
 
 投稿例：
 
