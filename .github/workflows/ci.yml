@@ -82,6 +82,15 @@ jobs:
           cp .env.times.example .env.times
           docker compose config --quiet
 
+      - name: Build container images when Docker is available
+        run: |
+          if ! docker info >/dev/null 2>&1; then
+            echo "::warning::Docker daemon unavailable; skipping image builds"
+            exit 0
+          fi
+          docker build --build-arg BOT=times-bot -t discord-times-bot:ci .
+          docker build --build-arg BOT=utils-bot -t discord-utils-bot:ci .
+
       - name: Package single-service and combined binaries
         run: |
           set -euo pipefail
