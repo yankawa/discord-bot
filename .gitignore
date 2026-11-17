@@ -1,0 +1,11 @@
+.env*
+!.env.*.example
+*.env
+!*.env.example
+/bin/
+/data/
+/dist/
+/CHECKSUMS.sha256
+*.zip
+*.test
+*.out
